@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoundOne — AI Interview Coach</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=EB+Garamond:ital,wght@1,400;1,700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- LANDING PAGE -->
+  <section id="landing-page" class="page active">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span>SDE</span>
+        <span>Data Analyst</span>
+        <span>PM</span>
+        <button id="login-btn" class="nav-btn-ghost">Login</button>
+        <button id="get-started-btn" class="nav-btn-dark">Start →</button>
+      </div>
+    </nav>
+    <div class="landing-body">
+      <div class="landing-left">
+        <p class="issue-label">AI Interview Coach</p>
+        <div class="hero-text">
+          <h1 class="hero-bold">Stop guessing.</h1>
+          <h1 class="hero-italic">Start scoring.</h1>
+        </div>
+        <p class="hero-sub">5 AI-generated questions, real interviewer-level feedback, and the exact answer you should've given — every single time.</p>
+        <div class="hero-actions">
+          <button class="btn-primary" id="hero-start-btn">Begin session →</button>
+          <span class="hero-note">Free. No signup needed to try.</span>
+        </div>
+      </div>
+      <div class="landing-right">
+        <div class="r-card anim-1">
+          <p class="card-label">Question 04 / 10 · SDE Hard</p>
+          <p class="card-question">"Design a rate limiter for a distributed API at scale."</p>
+        </div>
+        <div class="r-card anim-2">
+          <div class="score-header">
+            <p class="card-label">Your score</p>
+            <p class="score-num">9.1<span class="score-denom">/10</span></p>
+          </div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill" style="width:91%"></div>
+          </div>
+          <p class="score-feedback">Strong answer. Consider mentioning token bucket vs sliding window.</p>
+        </div>
+        <div class="stats-grid anim-3">
+          <div class="stat-card">
+            <p class="stat-num">10</p>
+            <p class="stat-label">Questions</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-num">8.4</p>
+            <p class="stat-label">Avg score</p>
+          </div>
+          <div class="stat-card dark">
+            <p class="stat-num light-text">AI</p>
+            <p class="stat-label light-text">Powered</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="how-section">
+      <p class="issue-label" style="text-align:center">How it works</p>
+      <div class="how-steps">
+        <div class="how-step">
+          <p class="how-num">01</p>
+          <p class="how-title">Pick your role</p>
+          <p class="how-sub">SDE, Data Analyst, or PM — choose difficulty too.</p>
+        </div>
+        <div class="how-step">
+          <p class="how-num">02</p>
+          <p class="how-title">Answer 5 questions</p>
+          <p class="how-sub">Type or speak your answers, just like a real interview.</p>
+        </div>
+        <div class="how-step">
+          <p class="how-num">03</p>
+          <p class="how-title">Get scored + the ideal answer</p>
+          <p class="how-sub">See exactly what you missed and how to fix it next time.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial-strip">
+      <p class="testimonial-text">"Went in thinking I knew stack vs heap cold. RoundOne showed me exactly where I was vague. Fixed it before my actual interview."</p>
+      <p class="testimonial-by">— A. Sharma, final year CS student</p>
+    </div>
+  </section>
+
+  <!-- LOGIN PAGE -->
+  <section id="login-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span class="nav-text">New here?</span>
+        <button id="go-register-btn" class="nav-btn-dark">Create account →</button>
+      </div>
+    </nav>
+    <div class="auth-body">
+      <div class="auth-left">
+        <p class="issue-label">Welcome back</p>
+        <h1 class="auth-heading-bold">Ready for</h1>
+        <h1 class="auth-heading-italic">round two?</h1>
+        <p class="auth-sub">Pick up where you left off. Your scores and history are waiting.</p>
+      </div>
+      <div class="auth-right">
+        <div class="auth-card">
+          <h2 class="auth-card-title">Login</h2>
+          <form id="login-form" class="auth-form">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="login-email" placeholder="you@example.com" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="login-password" placeholder="••••••••" required />
+              <p id="login-error" class="form-error">Invalid email or password.</p>
+            </div>
+            <button type="submit" class="form-btn">Login →</button>
+            <p class="form-switch">No account? <span id="switch-to-register" class="form-link">Sign up</span></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REGISTER PAGE -->
+  <section id="register-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span class="nav-text">Already a member?</span>
+        <button id="go-login-btn" class="nav-btn-dark">Login →</button>
+      </div>
+    </nav>
+    <div class="auth-body">
+      <div class="auth-left">
+        <p class="issue-label">Get started</p>
+        <h1 class="auth-heading-bold">Your first</h1>
+        <h1 class="auth-heading-italic">round starts now.</h1>
+        <p class="auth-sub">Create your account and start practicing with AI-powered mock interviews.</p>
+      </div>
+      <div class="auth-right">
+        <div class="auth-card">
+          <h2 class="auth-card-title">Create account</h2>
+          <form id="register-form" class="auth-form">
+            <div class="form-group">
+              <label class="form-label">Full name</label>
+              <input type="text" id="register-name" placeholder="Nishtha Narula" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="register-email" placeholder="you@example.com" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" id="register-password" placeholder="Min. 8 characters" required />
+              <p id="register-error" class="form-error">Password must be at least 8 characters.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preparing for</label>
+              <select id="register-role">
+                <option value="SDE">Software Engineering (SDE)</option>
+                <option value="DA">Data Analyst</option>
+                <option value="PM">Product Manager</option>
+              </select>
+            </div>
+            <button type="submit" class="form-btn">Create account →</button>
+            <p class="form-switch">Have an account? <span id="switch-to-login" class="form-link">Login</span></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD PAGE -->
+  <section id="dashboard-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <button id="dash-logout-btn" class="nav-btn-ghost">Logout</button>
+      </div>
+    </nav>
+    <div class="dash-body">
+      <p class="issue-label">Your dashboard</p>
+      <h1 class="dash-greeting" id="dash-greeting">Hi there.</h1>
+      <p class="hero-sub" style="margin-bottom:2rem">Ready for another round?</p>
+
+      <div class="dash-stats">
+        <div class="dash-stat-card">
+          <p class="dash-stat-num" id="dash-avg">—</p>
+          <p class="report-stat-label">Average score</p>
+        </div>
+        <div class="dash-stat-card">
+          <p class="dash-stat-num" id="dash-total">0</p>
+          <p class="report-stat-label">Interviews taken</p>
+        </div>
+        <div class="dash-stat-card">
+          <p class="dash-stat-num" id="dash-best">—</p>
+          <p class="report-stat-label">Best score</p>
+        </div>
+        <div class="dash-stat-card">
+          <p class="dash-stat-num" id="dash-streak">0</p>
+          <p class="report-stat-label">Day streak</p>
+        </div>
+      </div>
+
+      <button id="dash-start-btn" class="btn-primary" style="margin-bottom:2.5rem">Start interview →</button>
+
+      <p class="card-label" style="margin-bottom:12px">Recent activity</p>
+      <div id="dash-recent" class="report-breakdown"></div>
+      <p id="dash-empty" class="hero-note">No interviews yet. Start your first one above.</p>
+    </div>
+  </section>
+
+  <!-- SETUP PAGE -->
+  <section id="setup-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span id="user-greeting" class="nav-text"></span>
+        <button id="logout-btn" class="nav-btn-ghost">Logout</button>
+      </div>
+    </nav>
+    <div class="setup-body">
+      <div class="setup-header">
+        <p class="issue-label">Configure your session</p>
+        <h1 class="hero-bold">Choose your</h1>
+        <h1 class="hero-italic">battlefield.</h1>
+      </div>
+      <div class="setup-options">
+        <div class="setup-group">
+          <p class="setup-group-label">Role</p>
+          <div class="setup-cards">
+            <div class="setup-card active" data-value="SDE" data-group="role">
+              <p class="setup-card-title">Software Engineering</p>
+              <p class="setup-card-sub">DSA, system design, OOP, CS fundamentals</p>
+            </div>
+            <div class="setup-card" data-value="DA" data-group="role">
+              <p class="setup-card-title">Data Analyst</p>
+              <p class="setup-card-sub">SQL, statistics, Python, data interpretation</p>
+            </div>
+            <div class="setup-card" data-value="PM" data-group="role">
+              <p class="setup-card-title">Product Manager</p>
+              <p class="setup-card-sub">Product sense, metrics, case studies</p>
+            </div>
+          </div>
+        </div>
+        <div class="setup-group">
+          <p class="setup-group-label">Difficulty</p>
+          <div class="setup-cards">
+            <div class="setup-card" data-value="Easy" data-group="difficulty">
+              <p class="setup-card-title">Easy</p>
+              <p class="setup-card-sub">Fresher level, fundamentals</p>
+            </div>
+            <div class="setup-card active" data-value="Medium" data-group="difficulty">
+              <p class="setup-card-title">Medium</p>
+              <p class="setup-card-sub">Internship and entry level</p>
+            </div>
+            <div class="setup-card" data-value="Hard" data-group="difficulty">
+              <p class="setup-card-title">Hard</p>
+              <p class="setup-card-sub">Senior and competitive roles</p>
+            </div>
+          </div>
+        </div>
+        <button id="start-interview-btn" class="btn-primary">Start interview →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERVIEW PAGE -->
+  <section id="interview-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span id="interview-progress" class="nav-text">Question 1 / 5</span>
+        <span id="interview-role-label" class="nav-tag"></span>
+      </div>
+    </nav>
+    <div class="interview-body">
+      <div class="interview-left">
+        <p class="issue-label" id="interview-label">Question 01</p>
+        <div id="interview-question" class="interview-question">Loading question...</div>
+        <div class="voice-controls">
+          <button id="voice-btn" class="voice-btn">
+            <span>🎙</span>
+            <span id="voice-btn-text">Use voice</span>
+          </button>
+          <span class="voice-hint">or type below</span>
+        </div>
+      </div>
+      <div class="interview-right">
+        <div class="answer-box">
+          <label class="form-label">Your answer</label>
+          <textarea id="answer-input" placeholder="Type your answer here..." rows="8"></textarea>
+        </div>
+        <div class="interview-actions">
+          <button id="submit-answer-btn" class="btn-primary">Submit answer →</button>
+          <p id="submit-status" class="submit-status"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEEDBACK PAGE -->
+  <section id="feedback-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links">
+        <span id="feedback-progress" class="nav-text"></span>
+      </div>
+    </nav>
+    <div class="feedback-body">
+      <div class="feedback-left">
+        <p class="issue-label">AI Feedback</p>
+        <p class="feedback-score-num" id="feedback-score-num">—</p>
+        <p class="feedback-score-sub">/10</p>
+        <div id="feedback-verdict" class="feedback-verdict"></div>
+        <button id="next-question-btn" class="btn-primary" style="margin-top:2rem">Next question →</button>
+      </div>
+      <div class="feedback-right">
+        <div class="r-card">
+          <p class="card-label">Question</p>
+          <p class="card-question" id="feedback-question-text"></p>
+        </div>
+        <div class="r-card">
+          <p class="card-label">Your answer</p>
+          <p class="feedback-answer-text" id="feedback-answer-text"></p>
+        </div>
+        <div class="r-card">
+          <p class="card-label">AI Analysis</p>
+          <p class="feedback-analysis" id="feedback-analysis"></p>
+        </div>
+        <div class="r-card ideal-card">
+          <p class="card-label">Ideal Answer</p>
+          <p class="feedback-ideal" id="feedback-ideal"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT PAGE -->
+  <section id="report-page" class="page">
+    <nav class="nav">
+      <span class="nav-logo">RoundOne</span>
+      <div class="nav-links"><button id="new-session-btn" class="nav-btn-dark">New session →</button></div>
+    </nav>
+    <div class="report-body">
+      <div class="report-left">
+        <p class="issue-label">Session complete</p>
+        <h1 class="hero-bold" id="report-verdict-title">Well done.</h1>
+        <h1 class="hero-italic" id="report-verdict-sub">Keep pushing.</h1>
+
+        <div class="ring-wrap">
+          <svg width="130" height="130" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="54" stroke="#3a3633" stroke-width="8" fill="none"/>
+            <circle id="ring-fill" cx="60" cy="60" r="54" stroke="#4caf7d" stroke-width="8" fill="none" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="ring-text">
+            <p id="ring-pct">0%</p>
+            <p class="report-score-label">Score</p>
+          </div>
+        </div>
+
+        <div class="report-overall">
+          <p class="report-score-label">Overall score</p>
+          <p class="report-score-num" id="report-overall-score">—</p>
+        </div>
+        <div class="report-stats">
+          <div class="report-stat"><p class="report-stat-num" id="report-questions">5</p><p class="report-stat-label">Questions</p></div>
+          <div class="report-stat"><p class="report-stat-num" id="report-best">—</p><p class="report-stat-label">Best score</p></div>
+          <div class="report-stat"><p class="report-stat-num" id="report-worst">—</p><p class="report-stat-label">Needs work</p></div>
+        </div>
+        <button id="retry-btn" class="btn-primary" style="margin-top:1.5rem">Try again →</button>
+      </div>
+
+      <div class="report-right">
+        <div class="charts-row">
+          <div class="chart-box"><p class="card-label">Score by question</p><canvas id="chart-bar"></canvas></div>
+          <div class="chart-box"><p class="card-label">Performance split</p><canvas id="chart-doughnut"></canvas></div>
+          <div class="chart-box"><p class="card-label">Skill radar</p><canvas id="chart-radar"></canvas></div>
+        </div>
+        <p class="card-label" style="margin:16px 0 12px">Question breakdown</p>
+        <div id="report-breakdown" class="report-breakdown"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
