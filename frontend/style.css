@@ -104,6 +104,158 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   }
   .nav-btn-dark:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity: 0.92; }
+
+  /* ============================================================
+     LANDING PAGE — DARK MINIMAL THEME (Linear/Vercel-coded)
+     Scoped entirely to #landing-page so no other page is affected.
+     Logo stays in normal Inter, not mono/condensed.
+     Mono is reserved for tags/labels/scores only — the "dev tool" texture.
+     ============================================================ */
+
+  #landing-page {
+    --dk-bg: #0A0A0C;
+    --dk-surface: #131316;
+    --dk-border: #232328;
+    --dk-border-strong: #2A2A30;
+    --dk-text: #F5F5F7;
+    --dk-text-dim: #C8C8CE;
+    --dk-text-muted: #8A8A93;
+    --dk-text-faint: #6B6B72;
+    --dk-accent: #3ECF8E;
+    --dk-accent-ink: #0A0A0C;
+    background: var(--dk-bg);
+  }
+
+  #landing-page .nav {
+    background: var(--dk-bg);
+    border-bottom: 0.5px solid var(--dk-border);
+  }
+
+  #landing-page .nav-logo {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--dk-text);
+  }
+
+  #landing-page .nav-role-pills { border-right: 1px solid var(--dk-border); }
+  #landing-page .nav-pill {
+    color: var(--dk-text-faint);
+    border: 0.5px solid var(--dk-border);
+  }
+  #landing-page .nav-pill:hover { border-color: var(--dk-border-strong); color: var(--dk-text-dim); }
+
+  #landing-page .nav-btn-ghost {
+    color: var(--dk-text-dim);
+    border: 0.5px solid var(--dk-border-strong);
+  }
+  #landing-page .nav-btn-ghost:hover { border-color: var(--dk-text-muted); color: var(--dk-text); }
+
+  #landing-page .nav-btn-dark {
+    background: var(--dk-accent);
+    color: var(--dk-accent-ink);
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
+  }
+  #landing-page .nav-btn-dark:hover { box-shadow: 0 6px 16px rgba(62,207,142,0.25); opacity: 1; }
+
+  #landing-page .landing-body::before {
+    background: radial-gradient(circle, rgba(62,207,142,0.10) 0%, rgba(62,207,142,0) 70%);
+  }
+
+  #landing-page .hero-text {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  #landing-page .issue-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--dk-accent);
+  }
+  #landing-page .how-section .issue-label,
+  #landing-page .testimonial-section .issue-label {
+    color: var(--dk-text-faint);
+  }
+
+  #landing-page .hero-bold,
+  #landing-page .hero-italic {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-style: normal;
+    font-weight: 600;
+    color: var(--dk-text);
+  }
+
+  #landing-page .hero-sub {
+    color: var(--dk-text-muted);
+    font-weight: 400;
+  }
+
+  #landing-page .hero-note { color: var(--dk-text-faint); }
+
+  #landing-page .btn-primary {
+    background: var(--dk-accent);
+    color: var(--dk-accent-ink);
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 600;
+  }
+  #landing-page .btn-primary:hover { box-shadow: 0 8px 22px rgba(62,207,142,0.28); opacity: 1; }
+
+  #landing-page .r-card,
+  #landing-page .stat-card,
+  #landing-page .testimonial-card {
+    background: var(--dk-surface);
+    border: 0.5px solid var(--dk-border);
+    color: var(--dk-text-dim);
+  }
+  #landing-page .r-card:hover,
+  #landing-page .stat-card:hover,
+  #landing-page .testimonial-card:hover { border-color: var(--dk-border-strong); }
+
+  #landing-page .stat-card.dark { background: var(--dk-accent); border-color: var(--dk-accent); color: var(--dk-accent-ink); }
+  #landing-page .stat-card.dark .stat-num,
+  #landing-page .stat-card.dark .stat-label { color: var(--dk-accent-ink); }
+
+  #landing-page .card-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dk-text-faint);
+    letter-spacing: 0.04em;
+  }
+  #landing-page .card-question { color: var(--dk-text-dim); }
+  #landing-page .score-feedback { color: var(--dk-text-muted); }
+  #landing-page .score-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    color: var(--dk-accent);
+  }
+  #landing-page .score-denom { color: var(--dk-text-faint); }
+  #landing-page .score-bar-track { background: var(--dk-border); }
+  #landing-page .score-bar-fill { background: var(--dk-accent); }
+  #landing-page .stat-num { color: var(--dk-text); font-family: 'IBM Plex Mono', monospace; }
+  #landing-page .stat-label { color: var(--dk-text-faint); }
+
+  #landing-page .how-section,
+  #landing-page .testimonial-section { border-top: 0.5px solid var(--dk-border); }
+
+  #landing-page .how-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dk-accent);
+  }
+  #landing-page .how-title { color: var(--dk-text); font-weight: 500; }
+  #landing-page .how-sub { color: var(--dk-text-muted); font-weight: 400; }
+
+  #landing-page .testimonial-text { color: var(--dk-text-dim); }
+  #landing-page .testimonial-name { color: var(--dk-text); }
+  #landing-page .testimonial-role { color: var(--dk-text-faint); }
+  #landing-page .testimonial-avatar {
+    background: var(--dk-surface);
+    border: 0.5px solid var(--dk-border);
+    color: var(--dk-accent);
+  }
   
   .nav-btn-ghost {
     background: transparent;
