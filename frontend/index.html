@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoundOne — AI Interview Coach</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=EB+Garamond:ital,wght@1,400;1,700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <meta name="description" content="AI-powered mock interview coach. Get 5 role-specific questions, real interviewer-level feedback with scoring, and the ideal answer you should've given — free, no signup needed." />
+  <meta property="og:title" content="RoundOne — AI Interview Coach" />
+  <meta property="og:description" content="Stop guessing. Start scoring. AI mock interviews with real feedback and ideal answers." />
+  <meta property="og:type" content="website" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=EB+Garamond:ital,wght@1,400;1,700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
@@ -15,9 +20,11 @@
     <nav class="nav">
       <span class="nav-logo">RoundOne</span>
       <div class="nav-links">
-        <span>SDE</span>
-        <span>Data Analyst</span>
-        <span>PM</span>
+        <div class="nav-role-pills">
+          <span class="nav-pill">SDE</span>
+          <span class="nav-pill">Data Analyst</span>
+          <span class="nav-pill">PM</span>
+        </div>
         <button id="login-btn" class="nav-btn-ghost">Login</button>
         <button id="get-started-btn" class="nav-btn-dark">Start →</button>
       </div>
