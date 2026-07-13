@@ -6,6 +6,7 @@ let questions = [];
 let currentQuestion = 0;
 let sessionResults = [];
 let charts = {};
+let currentRoundId = null;
 
 const pages = {
   landing: document.getElementById('landing-page'),
@@ -40,6 +41,15 @@ function clearAuth() {
   currentUser = null;
 }
 
+// ============ ROUND ID HELPER ============
+// One roundId per interview session (5 questions), generated once when the
+// round starts and sent with every /evaluate-answer call so the backend can
+// group all 5 answers as ONE interview instead of 5 separate ones.
+function generateRoundId() {
+  if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+  return `round_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ============ DASHBOARD (fetched from backend, not localStorage) ============
 async function fetchSessions() {
   const token = getToken();
@@ -54,6 +64,37 @@ async function fetchSessions() {
     console.error(err.message);
     return [];
   }
+}
+
+// Groups raw per-question session docs into per-round summaries.
+// Each round = one interview (up to 5 questions sharing the same roundId).
+function groupSessionsByRound(sessions) {
+  const rounds = new Map();
+
+  sessions.forEach(s => {
+    const key = s.roundId || s._id; // fallback for any legacy docs saved before roundId existed
+    if (!rounds.has(key)) {
+      rounds.set(key, {
+        roundId: key,
+        role: s.role,
+        difficulty: s.difficulty,
+        createdAt: s.createdAt, // first question's timestamp; good enough for sorting/display
+        scores: []
+      });
+    }
+    const round = rounds.get(key);
+    round.scores.push(s.finalScore / 10);
+    // keep the earliest createdAt in this round as the round's date
+    if (new Date(s.createdAt) < new Date(round.createdAt)) round.createdAt = s.createdAt;
+  });
+
+  return Array.from(rounds.values())
+    .map(r => ({
+      ...r,
+      avgScore: r.scores.reduce((a, b) => a + b, 0) / r.scores.length,
+      questionCount: r.scores.length
+    }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // newest first
 }
 
 async function showDashboard(name) {
@@ -74,29 +115,32 @@ async function showDashboard(name) {
 
   document.getElementById('dash-empty').style.display = 'none';
 
-  // finalScore is stored 0-100 on the backend; display as X/10 to match existing UI
-  const scores = sessions.map(s => s.finalScore / 10);
-  const overallAvg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
-  const best = Math.max(...scores).toFixed(1);
+  const rounds = groupSessionsByRound(sessions);
+
+  // "Number of interviews" = distinct rounds, not raw questions
+  const roundAvgs = rounds.map(r => r.avgScore);
+  const overallAvg = (roundAvgs.reduce((a, b) => a + b, 0) / roundAvgs.length).toFixed(1);
+  const best = Math.max(...roundAvgs).toFixed(1);
 
   document.getElementById('dash-avg').textContent = overallAvg;
   document.getElementById('dash-best').textContent = best;
-  document.getElementById('dash-total').textContent = sessions.length;
+  document.getElementById('dash-total').textContent = rounds.length;
   document.getElementById('dash-streak').textContent = calcStreak(sessions);
 
+  // Recent activity now lists recent ROUNDS, not individual questions
   const recent = document.getElementById('dash-recent');
   recent.innerHTML = '';
-  sessions.slice(0, 5).forEach(s => {
-    const score = (s.finalScore / 10).toFixed(1);
+  rounds.slice(0, 5).forEach(r => {
+    const score = r.avgScore.toFixed(1);
     const row = document.createElement('div');
     row.className = 'breakdown-row';
     const c = score >= 8 ? '#4caf7d' : score >= 5 ? '#e6a817' : '#e05252';
-    const d = new Date(s.createdAt).toLocaleDateString();
-    const label = s.role ? `${s.role}${s.difficulty ? ' · ' + s.difficulty : ''}` : 'Practice question';
+    const d = new Date(r.createdAt).toLocaleDateString();
+    const label = r.role ? `${r.role}${r.difficulty ? ' · ' + r.difficulty : ''}` : 'Practice round';
     row.innerHTML = `
       <div class="breakdown-left">
         <p class="breakdown-q">${label}</p>
-        <p class="breakdown-verdict">${d} · ${s.question.substring(0, 60)}...</p>
+        <p class="breakdown-verdict">${d} · ${r.questionCount} question${r.questionCount === 1 ? '' : 's'}</p>
       </div>
       <div class="breakdown-score-badge" style="background:${c}20;border:1px solid ${c};color:${c}">${score}/10</div>`;
     recent.appendChild(row);
@@ -211,6 +255,7 @@ document.getElementById('start-interview-btn').addEventListener('click', () => {
   sessionResults = [];
   questions = [];
   currentQuestion = 0;
+  currentRoundId = generateRoundId(); // new round starts here — every answer below shares this id
   document.getElementById('interview-role-label').textContent = `${selectedRole} · ${selectedDifficulty}`;
   showPage('interview');
   loadQuestion();
@@ -267,7 +312,8 @@ document.getElementById('submit-answer-btn').addEventListener('click', async () 
         question: questions[currentQuestion],
         answer,
         role: selectedRole,
-        difficulty: selectedDifficulty
+        difficulty: selectedDifficulty,
+        roundId: currentRoundId
       })
     });
     if (response.status === 401) {
@@ -332,7 +378,7 @@ function showReport() {
   document.getElementById('report-verdict-sub').textContent = sub;
 
   // no localStorage save needed — /evaluate-answer already persisted each
-  // question to MongoDB as it was answered
+  // question to MongoDB as it was answered, tagged with currentRoundId
 
   drawRing(avg);
 

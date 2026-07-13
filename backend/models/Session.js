@@ -6,9 +6,18 @@ const sessionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-    index: true,
-    role: { type: String },
-    difficulty: { type: String }
+    index: true
+  },
+  roundId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  role: {
+    type: String
+  },
+  difficulty: {
+    type: String
   },
   question: {
     type: String,

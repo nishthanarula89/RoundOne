@@ -25,7 +25,41 @@ const TOPIC_BUCKETS = {
   PM: ["Product sense and prioritization", "Metrics and analytics", "A case study/estimation problem", "Go-to-market strategy", "Stakeholder/tradeoff scenario"]
 };
 
-async function callGemini(prompt, timeoutMs = 15000) {
+// Different phrasing/focus each time so Gemini doesn't default to the same
+// "canonical" question for a given topic every time it's asked.
+const ANGLES = [
+  "framed as a real-world scenario the candidate might face on the job",
+  "framed as a comparison between two approaches",
+  "framed around a common mistake candidates make",
+  "framed as a practical debugging or troubleshooting situation",
+  "framed around trade-offs and edge cases",
+  "framed as a 'walk me through how you'd design/solve X' style question",
+  "framed around a specific concrete example rather than an abstract definition"
+];
+
+// In-memory recent-question cache so we don't repeat questions within a
+// round or across rounds while the server process is alive.
+// Keyed by role+difficulty+topic -> array of recently generated question strings.
+const recentQuestionsCache = new Map();
+const MAX_CACHE_PER_KEY = 25;
+
+function cacheKey(role, difficulty, topic) {
+  return `${role}::${difficulty}::${topic}`;
+}
+
+function getRecentQuestions(role, difficulty, topic) {
+  return recentQuestionsCache.get(cacheKey(role, difficulty, topic)) || [];
+}
+
+function addRecentQuestion(role, difficulty, topic, question) {
+  const key = cacheKey(role, difficulty, topic);
+  const list = recentQuestionsCache.get(key) || [];
+  list.push(question);
+  if (list.length > MAX_CACHE_PER_KEY) list.shift();
+  recentQuestionsCache.set(key, list);
+}
+
+async function callGemini(prompt, { timeoutMs = 15000, temperature = 0.7, topP = 0.95 } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -34,7 +68,10 @@ async function callGemini(prompt, timeoutMs = 15000) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature, topP }
+        }),
         signal: controller.signal
       }
     );
@@ -54,9 +91,22 @@ app.post("/generate-question", async (req, res) => {
     const buckets = TOPIC_BUCKETS[role] || TOPIC_BUCKETS.SDE;
     const topic = buckets[questionIndex % buckets.length];
 
+    const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
+    const recentQuestions = getRecentQuestions(role, difficulty, topic);
+
+    const exclusionBlock = recentQuestions.length
+      ? `\nDo NOT repeat or closely rephrase any of these previously asked questions:\n${recentQuestions.map(q => `- ${q}`).join("\n")}`
+      : "";
+
     const text = await callGemini(
-      `Generate one ${difficulty} difficulty interview question for a ${role} role, specifically about: ${topic}. Return ONLY the question, no numbering, no preamble.`
+      `Generate one ${difficulty} difficulty interview question for a ${role} role, specifically about: ${topic}.
+Phrase it ${angle}.${exclusionBlock}
+Return ONLY the question, no numbering, no preamble.`,
+      { temperature: 1.0, topP: 0.95 }
     );
+
+    addRecentQuestion(role, difficulty, topic, text);
+
     res.json({ question: text });
   } catch (e) {
     console.error(e.message);
@@ -67,7 +117,11 @@ app.post("/generate-question", async (req, res) => {
 // Protected by authMiddleware so we know which user to save the session under.
 // Frontend must send the JWT in the Authorization header.
 app.post("/evaluate-answer", authMiddleware, async (req, res) => {
-  const { question, answer, role, difficulty } = req.body;
+  const { question, answer, role, difficulty, roundId } = req.body;
+
+  if (!roundId) {
+    return res.status(400).json({ error: "Missing roundId — cannot group this answer into an interview round." });
+  }
 
   try {
     // Step 1: rule-based scoring — runs instantly, no API call, never fails
@@ -83,7 +137,8 @@ Question: "${question}"
 Answer: "${answer}"
 Rule-based signals already computed: ${JSON.stringify(ruleBasedScore)}
 Respond ONLY with valid JSON, no markdown, no extra text:
-{"score":<1-10>,"verdict":"<one sentence>","analysis":"<2-3 sentences on what was good/missing>","idealAnswer":"<3-5 sentence model answer showing the correct/complete solution>","technical":<1-10>,"communication":<1-10>,"clarity":<1-10>}`
+{"score":<1-10>,"verdict":"<one sentence>","analysis":"<2-3 sentences on what was good/missing>","idealAnswer":"<3-5 sentence model answer showing the correct/complete solution>","technical":<1-10>,"communication":<1-10>,"clarity":<1-10>}`,
+        { temperature: 0.4 }
       );
       const cleaned = text.replace(/```json|```/g, "").trim();
       try {
@@ -115,6 +170,7 @@ Respond ONLY with valid JSON, no markdown, no extra text:
 
     const session = await Session.create({
       userId: req.userId,
+      roundId,
       question,
       answerText: answer,
       role,
@@ -149,7 +205,7 @@ app.get("/sessions", authMiddleware, async (req, res) => {
   try {
     const sessions = await Session.find({ userId: req.userId })
       .sort({ createdAt: -1 })
-      .select("question finalScore ruleBasedScore role difficulty createdAt");
+      .select("question finalScore ruleBasedScore role difficulty roundId createdAt");
     res.json(sessions);
   } catch (e) {
     console.error(e.message);
