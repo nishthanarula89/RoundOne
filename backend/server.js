@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/authRoutes");
 const authMiddleware = require("./middleware/authMiddleware");
@@ -14,6 +15,28 @@ app.use(cors());
 app.use(express.json());
 
 connectDB();
+
+// Global safety net — no single IP should be able to hammer the whole API.
+// Generous enough not to bother real users, tight enough to stop abuse/scraping.
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests from this IP. Please try again later." }
+});
+app.use(globalLimiter);
+
+// Tighter limit on question generation and answer evaluation specifically —
+// these are the two routes that cost real money/quota (Gemini calls), so
+// they get their own stricter caps on top of the global one.
+const geminiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30, // ~2 questions/answers per minute sustained — plenty for a real interview session
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You're going a bit fast — please wait a few minutes before continuing." }
+});
 
 app.use("/api/auth", authRoutes);
 
@@ -85,7 +108,7 @@ async function callGemini(prompt, { timeoutMs = 15000, temperature = 0.7, topP =
   }
 }
 
-app.post("/generate-question", async (req, res) => {
+app.post("/generate-question", geminiLimiter, async (req, res) => {
   try {
     const { role, difficulty, questionIndex = 0 } = req.body;
     const buckets = TOPIC_BUCKETS[role] || TOPIC_BUCKETS.SDE;
@@ -116,7 +139,7 @@ Return ONLY the question, no numbering, no preamble.`,
 
 // Protected by authMiddleware so we know which user to save the session under.
 // Frontend must send the JWT in the Authorization header.
-app.post("/evaluate-answer", authMiddleware, async (req, res) => {
+app.post("/evaluate-answer", geminiLimiter, authMiddleware, async (req, res) => {
   const { question, answer, role, difficulty, roundId } = req.body;
 
   if (!roundId) {
