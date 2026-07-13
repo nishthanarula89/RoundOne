@@ -23,64 +23,88 @@ function showPage(name) {
   pages[name].classList.add('active');
 }
 
-// ============ HISTORY (localStorage) ============
-function getHistory() {
-  try { return JSON.parse(localStorage.getItem('roundone_history')) || []; }
-  catch { return []; }
+// ============ AUTH TOKEN HELPERS ============
+function saveAuth(token, user) {
+  localStorage.setItem('roundone_token', token);
+  localStorage.setItem('roundone_user', JSON.stringify(user));
+  currentUser = user;
 }
 
-function saveSessionToHistory(avg, role, difficulty) {
-  const history = getHistory();
-  history.push({ date: new Date().toISOString(), avg: parseFloat(avg), role, difficulty, count: sessionResults.length });
-  localStorage.setItem('roundone_history', JSON.stringify(history));
+function getToken() {
+  return localStorage.getItem('roundone_token');
 }
 
-function showDashboard(name) {
+function clearAuth() {
+  localStorage.removeItem('roundone_token');
+  localStorage.removeItem('roundone_user');
+  currentUser = null;
+}
+
+// ============ DASHBOARD (fetched from backend, not localStorage) ============
+async function fetchSessions() {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const response = await fetch(`${API_URL}/sessions`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch sessions');
+    return await response.json();
+  } catch (err) {
+    console.error(err.message);
+    return [];
+  }
+}
+
+async function showDashboard(name) {
   document.getElementById('dash-greeting').textContent = `Hi, ${name}.`;
-  const history = getHistory();
+  showPage('dashboard'); // show page immediately, fill data as it arrives
 
-  if (history.length === 0) {
+  const sessions = await fetchSessions();
+
+  if (sessions.length === 0) {
     document.getElementById('dash-empty').style.display = 'block';
     document.getElementById('dash-avg').textContent = '—';
     document.getElementById('dash-best').textContent = '—';
     document.getElementById('dash-total').textContent = '0';
     document.getElementById('dash-streak').textContent = '0';
     document.getElementById('dash-recent').innerHTML = '';
-    showPage('dashboard');
     return;
   }
 
   document.getElementById('dash-empty').style.display = 'none';
-  const avgs = history.map(h => h.avg);
-  const overallAvg = (avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(1);
-  const best = Math.max(...avgs);
+
+  // finalScore is stored 0-100 on the backend; display as X/10 to match existing UI
+  const scores = sessions.map(s => s.finalScore / 10);
+  const overallAvg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+  const best = Math.max(...scores).toFixed(1);
 
   document.getElementById('dash-avg').textContent = overallAvg;
   document.getElementById('dash-best').textContent = best;
-  document.getElementById('dash-total').textContent = history.length;
-  document.getElementById('dash-streak').textContent = calcStreak(history);
+  document.getElementById('dash-total').textContent = sessions.length;
+  document.getElementById('dash-streak').textContent = calcStreak(sessions);
 
   const recent = document.getElementById('dash-recent');
   recent.innerHTML = '';
-  history.slice(-5).reverse().forEach(h => {
+  sessions.slice(0, 5).forEach(s => {
+    const score = (s.finalScore / 10).toFixed(1);
     const row = document.createElement('div');
     row.className = 'breakdown-row';
-    const c = h.avg >= 8 ? '#4caf7d' : h.avg >= 5 ? '#e6a817' : '#e05252';
-    const d = new Date(h.date).toLocaleDateString();
+    const c = score >= 8 ? '#4caf7d' : score >= 5 ? '#e6a817' : '#e05252';
+    const d = new Date(s.createdAt).toLocaleDateString();
+    const label = s.role ? `${s.role}${s.difficulty ? ' · ' + s.difficulty : ''}` : 'Practice question';
     row.innerHTML = `
       <div class="breakdown-left">
-        <p class="breakdown-q">${h.role} · ${h.difficulty}</p>
-        <p class="breakdown-verdict">${d} · ${h.count} questions</p>
+        <p class="breakdown-q">${label}</p>
+        <p class="breakdown-verdict">${d} · ${s.question.substring(0, 60)}...</p>
       </div>
-      <div class="breakdown-score-badge" style="background:${c}20;border:1px solid ${c};color:${c}">${h.avg}/10</div>`;
+      <div class="breakdown-score-badge" style="background:${c}20;border:1px solid ${c};color:${c}">${score}/10</div>`;
     recent.appendChild(row);
   });
-
-  showPage('dashboard');
 }
 
-function calcStreak(history) {
-  const days = [...new Set(history.map(h => new Date(h.date).toDateString()))];
+function calcStreak(sessions) {
+  const days = [...new Set(sessions.map(s => new Date(s.createdAt).toDateString()))];
   let streak = 0;
   let cursor = new Date();
   while (days.includes(cursor.toDateString())) {
@@ -97,37 +121,80 @@ document.getElementById('go-register-btn').addEventListener('click', () => showP
 document.getElementById('go-login-btn').addEventListener('click', () => showPage('login'));
 document.getElementById('switch-to-register').addEventListener('click', () => showPage('register'));
 document.getElementById('switch-to-login').addEventListener('click', () => showPage('login'));
-document.getElementById('logout-btn').addEventListener('click', () => { currentUser = null; showPage('landing'); });
-document.getElementById('dash-logout-btn').addEventListener('click', () => { currentUser = null; showPage('landing'); });
+document.getElementById('logout-btn').addEventListener('click', () => { clearAuth(); showPage('landing'); });
+document.getElementById('dash-logout-btn').addEventListener('click', () => { clearAuth(); showPage('landing'); });
 document.getElementById('dash-start-btn').addEventListener('click', () => showPage('setup'));
 document.getElementById('new-session-btn').addEventListener('click', () => showPage('dashboard'));
 document.getElementById('retry-btn').addEventListener('click', () => showPage('setup'));
 
-document.getElementById('login-form').addEventListener('submit', (e) => {
+// ============ REAL LOGIN ============
+document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('login-email').value.split('@')[0];
-  currentUser = { name };
-  document.getElementById('user-greeting').textContent = `Hi, ${name}`;
-  showDashboard(name);
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error'); // add this element in HTML if not present
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Login failed');
+
+    saveAuth(data.token, data.user);
+    document.getElementById('user-greeting').textContent = `Hi, ${data.user.name}`;
+    if (errorEl) errorEl.classList.remove('visible');
+    showDashboard(data.user.name);
+  } catch (err) {
+    if (errorEl) { errorEl.textContent = err.message; errorEl.classList.add('visible'); }
+    else alert(err.message);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 });
 
-document.getElementById('register-form').addEventListener('submit', (e) => {
+// ============ REAL REGISTER ============
+document.getElementById('register-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const password = document.getElementById('register-password').value;
   const error = document.getElementById('register-error');
-  if (password.length < 8) { error.classList.add('visible'); return; }
-  error.classList.remove('visible');
+  if (password.length < 8) { error.textContent = 'Password must be at least 8 characters.'; error.classList.add('visible'); return; }
+
   const name = document.getElementById('register-name').value.trim();
+  const email = document.getElementById('register-email').value.trim(); // add this input in HTML if not present
   const role = document.getElementById('register-role').value;
-  currentUser = { name, role };
-  selectedRole = role;
-  document.getElementById('user-greeting').textContent = `Hi, ${name}`;
-  const activeRoleCard = document.querySelector(`[data-value="${role}"][data-group="role"]`);
-  if (activeRoleCard) {
-    document.querySelectorAll('[data-group="role"]').forEach(c => c.classList.remove('active'));
-    activeRoleCard.classList.add('active');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, role })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Registration failed');
+
+    saveAuth(data.token, data.user);
+    selectedRole = role;
+    document.getElementById('user-greeting').textContent = `Hi, ${data.user.name}`;
+    const activeRoleCard = document.querySelector(`[data-value="${role}"][data-group="role"]`);
+    if (activeRoleCard) {
+      document.querySelectorAll('[data-group="role"]').forEach(c => c.classList.remove('active'));
+      activeRoleCard.classList.add('active');
+    }
+    error.classList.remove('visible');
+    showDashboard(data.user.name);
+  } catch (err) {
+    error.textContent = err.message;
+    error.classList.add('visible');
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
-  showDashboard(name);
 });
 
 document.querySelectorAll('.setup-card').forEach(card => {
@@ -182,12 +249,33 @@ document.getElementById('submit-answer-btn').addEventListener('click', async () 
   status.textContent = 'Evaluating your answer...';
   btn.disabled = true;
 
+  const token = getToken();
+  if (!token) {
+    status.textContent = 'Session expired — please log in again.';
+    showPage('login');
+    return;
+  }
+
   try {
     const response = await fetch(`${API_URL}/evaluate-answer`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: questions[currentQuestion], answer })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        question: questions[currentQuestion],
+        answer,
+        role: selectedRole,
+        difficulty: selectedDifficulty
+      })
     });
+    if (response.status === 401) {
+      clearAuth();
+      status.textContent = 'Session expired — please log in again.';
+      showPage('login');
+      return;
+    }
     if (!response.ok) throw new Error('Server error');
     const result = await response.json();
     if (!result.score) throw new Error('Invalid response');
@@ -243,7 +331,8 @@ function showReport() {
   document.getElementById('report-verdict-title').textContent = title;
   document.getElementById('report-verdict-sub').textContent = sub;
 
-  saveSessionToHistory(avg, selectedRole, selectedDifficulty);
+  // no localStorage save needed — /evaluate-answer already persisted each
+  // question to MongoDB as it was answered
 
   drawRing(avg);
 

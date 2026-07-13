@@ -1,11 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const connectDB = require("./config/database");
+const authRoutes = require("./routes/authRoutes");
+const authMiddleware = require("./middleware/authMiddleware");
+const { calculateScore } = require("./middleware/utils/scoringEngine");
+const Session = require("./models/Session");
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+connectDB();
+
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => res.send("Hello! Your backend is alive."));
 
@@ -54,43 +64,96 @@ app.post("/generate-question", async (req, res) => {
   }
 });
 
-app.post("/evaluate-answer", async (req, res) => {
-  const { question, answer } = req.body;
-
-  const fallback = {
-    score: 3,
-    verdict: "Couldn't fully evaluate — answer seemed too short or unclear to score properly.",
-    analysis: "Try giving a more complete, specific answer with reasoning, not just a keyword or phrase.",
-    idealAnswer: "A strong answer explains your reasoning step by step and covers the core concept the question is testing.",
-    technical: 3,
-    communication: 3,
-    clarity: 3
-  };
+// Protected by authMiddleware so we know which user to save the session under.
+// Frontend must send the JWT in the Authorization header.
+app.post("/evaluate-answer", authMiddleware, async (req, res) => {
+  const { question, answer, role, difficulty } = req.body;
 
   try {
-    const text = await callGemini(
-      `You are a strict but fair technical interviewer.
+    // Step 1: rule-based scoring — runs instantly, no API call, never fails
+    const ruleBasedScore = calculateScore(answer);
+
+    // Step 2: Gemini call (now with timeout protection), given the rule-based signals
+    let geminiResult;
+    let geminiFailed = false;
+    try {
+      const text = await callGemini(
+        `You are a strict but fair technical interviewer.
 Question: "${question}"
 Answer: "${answer}"
+Rule-based signals already computed: ${JSON.stringify(ruleBasedScore)}
 Respond ONLY with valid JSON, no markdown, no extra text:
 {"score":<1-10>,"verdict":"<one sentence>","analysis":"<2-3 sentences on what was good/missing>","idealAnswer":"<3-5 sentence model answer showing the correct/complete solution>","technical":<1-10>,"communication":<1-10>,"clarity":<1-10>}`
-    );
-
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    let result;
-    try {
-      result = JSON.parse(cleaned);
-    } catch {
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (match) result = JSON.parse(match[0]);
-      else throw new Error("Could not parse AI response as JSON");
+      );
+      const cleaned = text.replace(/```json|```/g, "").trim();
+      try {
+        geminiResult = JSON.parse(cleaned);
+      } catch {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) geminiResult = JSON.parse(match[0]);
+        else throw new Error("Could not parse AI response as JSON");
+      }
+      if (typeof geminiResult.score !== "number") throw new Error("Missing score in AI response");
+    } catch (geminiError) {
+      console.error("Gemini failed, falling back to rule-based only:", geminiError.message);
+      geminiFailed = true;
+      geminiResult = {
+        score: Math.round(ruleBasedScore.overallScore / 10),
+        verdict: "AI feedback temporarily unavailable — showing rule-based analysis only.",
+        analysis: `Structure score: ${ruleBasedScore.structureScore}/100. Clarity score: ${ruleBasedScore.clarityScore}/100. Filler words used: ${ruleBasedScore.fillerWordCount}.`,
+        idealAnswer: "A strong answer explains your reasoning step by step and covers the core concept the question is testing.",
+        technical: null,
+        communication: null,
+        clarity: Math.round(ruleBasedScore.clarityScore / 10)
+      };
     }
 
-    if (typeof result.score !== "number") throw new Error("Missing score in AI response");
-    res.json(result);
+    // Step 3: merge into one score and persist
+    const finalScore = geminiFailed
+      ? ruleBasedScore.overallScore
+      : Math.round((ruleBasedScore.overallScore + geminiResult.score * 10) / 2);
+
+    const session = await Session.create({
+      userId: req.userId,
+      question,
+      answerText: answer,
+      role,
+      difficulty,
+      ruleBasedScore,
+      geminiFeedback: geminiFailed ? null : JSON.stringify(geminiResult),
+      finalScore
+    });
+
+    res.json({
+      ...geminiResult,
+      ruleBasedScore,
+      finalScore,
+      sessionId: session._id
+    });
   } catch (e) {
-    console.error("evaluate-answer failed, using fallback:", e.message);
-    res.json(fallback);
+    console.error("evaluate-answer failed completely:", e.message);
+    res.status(500).json({
+      score: 3,
+      verdict: "Couldn't fully evaluate — something went wrong on our end.",
+      analysis: "Please try submitting your answer again.",
+      idealAnswer: null,
+      technical: 3,
+      communication: 3,
+      clarity: 3
+    });
+  }
+});
+
+// Dashboard data — all past sessions for the logged-in user, newest first
+app.get("/sessions", authMiddleware, async (req, res) => {
+  try {
+    const sessions = await Session.find({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .select("question finalScore ruleBasedScore role difficulty createdAt");
+    res.json(sessions);
+  } catch (e) {
+    console.error(e.message);
+    res.status(500).json({ error: "Failed to fetch sessions." });
   }
 });
 
